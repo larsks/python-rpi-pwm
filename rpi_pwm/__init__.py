@@ -135,8 +135,11 @@ class PWM(object):
     def stop(self):
         self.stopflag = True
 
-    def play(self, tune, wait=False, callback=None):
-        t = Player(self, tune)
+    def play(self, tune, wait=False, export=True, callback=None):
+        if not self.is_exported() and export:
+            self.export()
+
+        t = Player(self, tune, callback=callback)
         t.start()
 
         if wait:
