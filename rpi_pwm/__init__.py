@@ -1,7 +1,9 @@
+import logging
 import os
 from threading import Thread, RLock
 import time
 
+LOG = logging.getLogger(__name__)
 sysfs_pwm_base = '/sys/class/pwm'
 
 
@@ -14,6 +16,7 @@ class Player(Thread):
         self.callback = callback
 
     def run(self):
+        LOG.debug('playing tune %s on %s', self.tune, self.pwm)
         with self.pwm:
             try:
                 self.pwm.stopflag = False
@@ -51,10 +54,15 @@ class PWM(object):
         self.lock = RLock()
         self.is_playing = False
 
+    def __str__(self):
+        return '<PWM @ {0.chip}/pwm{0.pwm}>'.format(self)
+
     def __enter__(self):
+        LOG.debug('entering context for %s', self)
         self.lock.acquire()
 
     def __exit__(self, *args):
+        LOG.debug('leaving context for %s', self)
         self.lock.release()
 
     @property
@@ -62,11 +70,13 @@ class PWM(object):
         return '{}/pwm{}'.format(self.chip, self.pwm)
 
     def export(self):
+        LOG.debug('exporting %s', self)
         if not self.is_exported():
             with open('{}/export'.format(self.chip), 'wb') as fd:
                 fd.write(b'%d\n' % self.pwm)
 
     def unexport(self):
+        LOG.debug('unexporting %s', self)
         if self.is_exported():
             with open('{}/unexport'.format(self.chip), 'wb') as fd:
                 fd.write(b'%d\n' % self.pwm)
@@ -76,7 +86,10 @@ class PWM(object):
 
     def play_tone(self, freq, duration):
         '''Play a single tone using pwm'''
+
         freq, duration = float(freq), float(duration)
+        LOG.debug('play frequency %fHz for %fs on %s',
+                  freq, duration, self)
 
         if freq == 0:
             time.sleep(duration)
